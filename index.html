@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Verificador Pedidos VW</title>
+<style>
+body{font-family:Arial,sans-serif;background:#f2f2f2;padding:12px;margin:0}
+.card{background:#fff;padding:16px;border-radius:14px;box-shadow:0 4px 12px #0001;max-width:800px;margin:auto}
+h2{margin:0 0 10px}
+.drop{border:2px dashed #0a7cff;border-radius:12px;padding:20px;text-align:center;background:#f8fbff;color:#0a7cff;font-weight:bold;margin-top:12px;cursor:pointer}
+.drop.dragover{background:#e3f0ff}
+input{width:100%;padding:12px;border-radius:8px;border:1px solid #ccc;box-sizing:border-box;margin-top:10px}
+.btn{padding:12px 16px;border-radius:10px;border:none;font-weight:bold;cursor:pointer}
+.btn-primary{background:#0a7cff;color:#fff;width:100%;margin-top:10px}
+.btn-row{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}
+.btn-row.btn{flex:1;min-width:140px}
+.btn-copy{background:#111;color:#fff}
+.btn-excel{background:#1a9c4d;color:#fff}
+#resultado{margin-top:14px;white-space:pre-wrap;background:#fafafa;border:1px solid #eee;border-radius:10px;padding:10px;font-size:14px}
+#galeria{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;margin-top:12px}
+.foto-item{border:1px solid #ddd;border-radius:10px;overflow:hidden;position:relative;background:#fff}
+.foto-item img{width:100%;height:100px;object-fit:cover;display:block}
+.foto-item span{font-size:10px;display:block;padding:4px;text-align:center}
+.del{position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;background:red;color:#fff;border:none}
+</style>
+</head>
+<body>
+<div class="card">
+<h2>Verificador Pedidos VW</h2>
+<input id="nroPedido" placeholder="Nro de Pedido ej: 0005170173">
+
+<div id="dropZone" class="drop">Subir PDF o Imagen</div>
+<input type="file" id="fileInput" accept=".pdf,.jpg,.jpeg,.png,image/*" hidden>
+
+<button class="btn btn-primary" onclick="verificar()">Verificar</button>
+
+<div class="btn-row">
+<button class="btn btn-copy" onclick="copiarListado()">Copiar Todo (listado)</button>
+<button class="btn btn-excel" onclick="copiarExcel()">Copiar Todo Excel (columna)</button>
+</div>
+
+<div id="resultado">Pegá o arrastrá el PDF del pedido aquí para ver el listado.</div>
+
+<div style="margin-top:22px;border-top:1px solid #eee;padding-top:14px">
+<h3 style="margin:0">📸 Fotos Pedido: <b id="foto-nro" style="color:#0a7cff">-</b></h3>
+<input type="file" id="inputFotos" accept=".jpg,.jpeg,.png,image/jpeg,image/png" multiple hidden>
+<button class="btn btn-primary" onclick="document.getElementById('inputFotos').click()">+ Subir Fotos (JPG / PNG)</button>
+<div id="galeria"></div>
+</div>
+</div>
+
+<script>
+let listadoTexto = "";
+let listadoColumna = "";
+let nroActual = "";
+
+const drop = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+drop.onclick = () => fileInput.click();
+drop.ondragover = e => { e.preventDefault(); drop.classList.add('dragover'); }
+drop.ondragleave = () => drop.classList.remove('dragover');
+drop.ondrop = e => { e.preventDefault(); drop.classList.remove('dragover'); manejarArchivo(e.dataTransfer.files[0]); }
+fileInput.onchange = e => manejarArchivo(e.target.files[0]);
+
+function manejarArchivo(file){
+  if(!file) return;
+  const r = document.getElementById('resultado');
+  r.innerText = "Archivo recibido: " + file.name + "\n\n(Simulación) Pieza A x 5\nPieza B x 2\nPieza C x 10";
+  listadoTexto = "Pedido "+ (nroActual||file.name) +"\nPieza A x 5\nPieza B x 2\nPieza C x 10";
+  listadoColumna = "Pieza A\nPieza B\nPieza C";
+  // Aquí va tu lógica real de parseo de PDF/imagen si ya la tenías
+}
+
+function verificar(){
+  nroActual = document.getElementById('nroPedido').value.trim();
+  if(!nroActual) return alert('Poné el Nro de Pedido');
+  document.getElementById('foto-nro').innerText = nroActual;
+  document.getElementById('resultado').innerText = "Pedido "+nroActual+" verificado ✅\nAhora subí el PDF o imagen.";
+  cargarFotos();
+}
+function copiarListado(){
+  if(!listadoTexto) return alert('Primero subí un PDF o imagen');
+  navigator.clipboard.writeText(listadoTexto).then(()=>alert('Copiado: Copiar Todo (listado) ✅'));
+}
+function copiarExcel(){
+  if(!listadoColumna) return alert('Primero subí un PDF o imagen');
+  navigator.clipboard.writeText(listadoColumna).then(()=>alert('Copiado: Copiar Todo Excel (columna) ✅'));
+}
+
+// FOTOS
+function cargarFotos(){
+  if(!nroActual) return;
+  const key='fotos_'+nroActual; const gal=document.getElementById('galeria');
+  const fotos=JSON.parse(localStorage.getItem(key)||'[]'); gal.innerHTML='';
+  fotos.forEach((f,i)=>{
+    gal.innerHTML+=`<div class="foto-item"><img src="${f.data}"><span>${f.nombre}</span><button class="del" onclick="borrarFoto(${i})">X</button></div>`;
+  });
+}
+window.borrarFoto=function(i){
+  let key='fotos_'+nroActual; let f=JSON.parse(localStorage.getItem(key)||'[]');
+  f.splice(i,1); localStorage.setItem(key,JSON.stringify(f)); cargarFotos();
+}
+document.getElementById('inputFotos').addEventListener('change', e=>{
+  if(!nroActual) return alert('Primero poné y verificá el Nro de Pedido');
+  let key='fotos_'+nroActual; let fotos=JSON.parse(localStorage.getItem(key)||'[]');
+  Array.from(e.target.files).forEach(file=>{
+    if(!['image/jpeg','image/png'].includes(file.type)){ alert('Solo JPG y PNG: '+file.name); return; }
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      const ext=file.type==='image/png'?'png':'jpg';
+      const nombre=`${nroActual}_${fotos.length+1}.${ext}`;
+      fotos.push({nombre,data:ev.target.result});
+      localStorage.setItem(key,JSON.stringify(fotos)); cargarFotos();
+    }; reader.readAsDataURL(file);
+  }); e.target.value='';
+});
+</script>
+</body>
+</html>
